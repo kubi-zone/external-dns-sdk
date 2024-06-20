@@ -1,0 +1,28 @@
+[package]
+name = "external-dns-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tracing = "0.1"
+reqwest = { version = "0.12.5", features = [
+    "rustls-tls",
+    "json",
+], default-features = false, optional = true }
+
+axum = { version = "0.7.5", features = ["json"], optional = true }
+tokio = { version = "1.38.0", features = ["signal"], optional = true }
+
+serde_json = { version = "1.0.117" }
+serde = { version = "1.0.203", features = ["derive"] }
+thiserror = "1.0.61"
+async-trait = "0.1.80"
+
+[features]
+default = ["client", "provider"]
+client = ["dep:reqwest"]
+provider = ["dep:axum", "dep:tokio"]
+
+
+[dev-dependencies]
+tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
