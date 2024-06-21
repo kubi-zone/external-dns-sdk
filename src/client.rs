@@ -6,6 +6,9 @@ use tracing::{error, instrument};
 
 use crate::{Change, Changes, Endpoint};
 
+/// External-DNS Webhook Client.
+///
+/// Used for interacting with HTTP apis implementing the External-DNS Webhook API.
 pub struct Client {
     /// Prefix of the API endpoints.
     ///
@@ -20,6 +23,7 @@ pub struct Client {
     client: reqwest::Client,
 }
 
+/// External-DNS Webhook API Error.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("reqwest: {0}")]
@@ -31,7 +35,7 @@ pub enum Error {
 }
 
 impl Client {
-    /// Prefix of the API endpoints.
+    /// Domain is the prefix of the API endpoints.
     ///
     /// If for example your healthz endpoint is at:
     ///

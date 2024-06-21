@@ -1,8 +1,4 @@
-use std::{
-    fmt::Display,
-    net::{Ipv4Addr, SocketAddrV4},
-    sync::Arc,
-};
+use std::{fmt::Display, net::SocketAddr, sync::Arc};
 
 use async_trait::async_trait;
 use axum::{
@@ -11,17 +7,23 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use reqwest::StatusCode;
+use kubizone_common::DomainName;
 use tokio::net::TcpListener;
 use tracing::{info_span, warn};
 
-use crate::{Change, Changes, DomainFilter, Endpoint};
+use crate::{Change, Changes, Endpoint};
 
+/// Utility trait for implementing an external-dns webhook provider.
+///
+/// By implementing this trait for your type, you can simply construct
+/// it and pass it to [`serve`], and you're set.
+///
+/// See an example in-memory imlpementation in the `e2e.rs` test example.
 #[async_trait]
 pub trait Provider {
     type Error: Display;
     /// Initialisation and negotiates headers and returns domain filter.
-    async fn init(&self) -> Result<DomainFilter, Self::Error>;
+    async fn init(&self) -> Result<Vec<DomainName>, Self::Error>;
 
     /// Health check
     ///
@@ -58,7 +60,8 @@ impl<P: Provider> Clone for Context<P> {
     }
 }
 
-pub async fn serve<P: Provider + Send + Sync + 'static>(port: u16, provider: P) {
+/// Run an External-DNS compatible webhook provider, using an Axum server.
+pub async fn serve<P: Provider + Send + Sync + 'static>(addr: SocketAddr, provider: P) {
     info_span!("external-dns-sdk");
     let app = Router::new()
         .route("/healthz", get(healthz::<P>))
@@ -69,14 +72,63 @@ pub async fn serve<P: Provider + Send + Sync + 'static>(port: u16, provider: P) 
             provider: Arc::new(provider),
         });
 
-    let listener = TcpListener::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port))
-        .await
-        .unwrap();
+    let listener = TcpListener::bind(addr).await.unwrap();
 
     axum::serve(listener, app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
+}
+
+async fn healthz<P: Provider>(State(context): State<Context<P>>) -> impl IntoResponse {
+    match context.provider.healthz().await {
+        Ok(result) => (axum::http::StatusCode::OK, result),
+        Err(err) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            err.to_string(),
+        ),
+    }
+}
+
+async fn get_records<P: Provider>(State(context): State<Context<P>>) -> Response {
+    match context.provider.get_records().await {
+        Ok(result) => (axum::http::StatusCode::OK, Json(result)).into_response(),
+        Err(err) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            err.to_string(),
+        )
+            .into_response(),
+    }
+}
+
+async fn set_records<P: Provider>(
+    State(context): State<Context<P>>,
+    Json(changes): Json<Changes>,
+) -> Response {
+    let changes = Vec::<Change>::from(changes);
+
+    match context.provider.set_records(changes).await {
+        Ok(result) => (axum::http::StatusCode::OK, Json(result)).into_response(),
+        Err(err) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            err.to_string(),
+        )
+            .into_response(),
+    }
+}
+
+async fn adjust_endpoints<P: Provider>(
+    State(context): State<Context<P>>,
+    Json(endpoints): Json<Vec<Endpoint>>,
+) -> Response {
+    match context.provider.adjust_endpoints(endpoints).await {
+        Ok(result) => (axum::http::StatusCode::OK, Json(result)).into_response(),
+        Err(err) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            err.to_string(),
+        )
+            .into_response(),
+    }
 }
 
 async fn shutdown_signal() {
@@ -103,41 +155,5 @@ async fn shutdown_signal() {
         _ = terminate => {
             warn!("Received SIGTERM signal, initiating graceful shutdown.");
         },
-    }
-}
-
-async fn healthz<P: Provider>(State(context): State<Context<P>>) -> impl IntoResponse {
-    match context.provider.healthz().await {
-        Ok(result) => (StatusCode::OK, result),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
-    }
-}
-
-async fn get_records<P: Provider>(State(context): State<Context<P>>) -> Response {
-    match context.provider.get_records().await {
-        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-    }
-}
-
-async fn set_records<P: Provider>(
-    State(context): State<Context<P>>,
-    Json(changes): Json<Changes>,
-) -> Response {
-    let changes = Vec::<Change>::from(changes);
-
-    match context.provider.set_records(changes).await {
-        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-    }
-}
-
-async fn adjust_endpoints<P: Provider>(
-    State(context): State<Context<P>>,
-    Json(endpoints): Json<Vec<Endpoint>>,
-) -> Response {
-    match context.provider.adjust_endpoints(endpoints).await {
-        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
     }
 }

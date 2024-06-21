@@ -15,10 +15,11 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DomainFilter {
+struct DomainFilter {
     pub filters: Vec<String>,
 }
 
+/// Uniquely identifiable parts of an Endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct EndpointIdent {
@@ -27,21 +28,37 @@ pub struct EndpointIdent {
     pub set_identifier: String,
 }
 
+/// Domain and record type with one or more "targets" (values).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Endpoint {
+    /// Uniquely identifiable record name.
     #[serde(flatten)]
     pub identity: EndpointIdent,
+
+    /// One or more "targets", that is the R-data values returned
+    /// when this record is queried.
     pub targets: Vec<String>,
+
+    /// Time-To-Live.
     pub record_ttl: i64,
+
+    /// One or more labels associated with the record, if
+    /// supported by the underlying provider.
     pub labels: HashMap<String, String>,
+
+    /// Provider-specific properties associated with the endpoint.
     pub provider_specific: Vec<ProviderSpecificProperty>,
 }
 
+/// Provider-specific properties associated with an [`Endpoint`]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderSpecificProperty {
+    /// Name of the property.
     pub name: String,
+
+    /// Value of the property.
     pub value: String,
 }
 
@@ -54,10 +71,20 @@ struct Changes {
     pub delete: Vec<Endpoint>,
 }
 
+/// Change to apply to the record set held by the provider.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
-    Update { old: Endpoint, new: Endpoint },
+    /// Update the `old` endpoint to match the `new` one.
+    Update {
+        /// Existing endpoint which should be updated.
+        old: Endpoint,
+        new: Endpoint,
+    },
+
+    /// Delete the contained endpoint.
     Delete(Endpoint),
+
+    /// Create a new endpoint.
     Create(Endpoint),
 }
 
@@ -112,9 +139,15 @@ impl From<Vec<Change>> for Changes {
     }
 }
 
+/// Utility trait for computing a differential from two lists of endpoints.
 pub trait EndpointDiff {
     /// Compare current (self) and desired (other) state, and compute a list of
     /// changes to move from one state to the other.
+    ///
+    /// * Endpoints contained in `self` but not in `other` will yield a [`Change::Delete`].
+    /// * Endpoints contained in `other` but not in `self` will yield a [`Change::Create`].
+    /// * Endpoints contained in both `self` and `other` will yield a [`Change::Update`],
+    ///     *if* the entries are not identical.
     fn difference(self, other: Self) -> Vec<Change>;
 }
 
@@ -148,10 +181,14 @@ impl EndpointDiff for Vec<Endpoint> {
             .map(Change::Delete);
 
         let updates = old_keys.intersection(&new_keys).filter_map(|identity| {
-            Some(Change::Update {
-                old: old.get(identity)?.clone(),
-                new: new.get(identity)?.clone(),
-            })
+            let old = old.get(identity)?.clone();
+            let new = new.get(identity)?.clone();
+
+            if old == new {
+                return None;
+            }
+
+            Some(Change::Update { old, new })
         });
 
         deletes

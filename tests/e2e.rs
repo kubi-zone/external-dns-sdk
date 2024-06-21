@@ -1,9 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::Arc,
+};
 
 use axum::async_trait;
-use external_dns_sdk::{
-    Change, Client, DomainFilter, Endpoint, EndpointDiff, EndpointIdent, Provider,
-};
+use external_dns_sdk::{Change, Client, Endpoint, EndpointDiff, EndpointIdent, Provider};
 use kubizone_common::{DomainName, Type};
 use tokio::sync::RwLock;
 use tracing::{debug, info, info_span, instrument, level_filters::LevelFilter, trace};
@@ -34,11 +36,11 @@ impl Provider for DebugProvider {
     type Error = &'static str;
 
     #[instrument(skip(self))]
-    async fn init(&self) -> Result<DomainFilter, Self::Error> {
+    async fn init(&self) -> Result<Vec<DomainName>, Self::Error> {
         info_span!("init");
 
         info!("initializing");
-        Ok(DomainFilter { filters: vec![] })
+        Ok(Vec::new())
     }
 
     #[instrument(skip(self))]
@@ -102,8 +104,13 @@ async fn main() {
         .with_max_level(LevelFilter::TRACE)
         .init();
 
-    let server =
-        tokio::spawn(async move { external_dns_sdk::serve(12333, DebugProvider::new()).await });
+    let server = tokio::spawn(async move {
+        external_dns_sdk::serve(
+            SocketAddrV4::new(Ipv4Addr::LOCALHOST, 12333).into(),
+            DebugProvider::new(),
+        )
+        .await
+    });
 
     let client = Client::new("http://localhost:12333");
 
