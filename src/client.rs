@@ -1,10 +1,10 @@
-use std::str::FromStr;
-
-use reqwest::{header::CONTENT_TYPE, Method, Url};
+use reqwest::{header::CONTENT_TYPE, Method};
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{error, instrument};
 
 use crate::{Change, Changes, Endpoint};
+
+pub use url::Url;
 
 /// External-DNS Webhook Client.
 ///
@@ -19,19 +19,28 @@ pub struct Client {
     /// Then your domain should be:
     ///
     ///     http://localhost:9998/external-dns
-    domain: String,
+    domain: Url,
     client: reqwest::Client,
 }
 
 /// External-DNS Webhook API Error.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Failure during transport.
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
+
+    /// Failed while serializing request body.
     #[error("serialization: {0}")]
     Serialization(serde_json::Error),
+
+    /// Failed while deserializing response body.
     #[error("deserialization: {0}")]
     Deserialization(serde_json::Error),
+
+    /// Failed while parsing Url.
+    #[error("url: {0}")]
+    Url(#[from] url::ParseError),
 }
 
 impl Client {
@@ -44,15 +53,11 @@ impl Client {
     /// Then your domain should be:
     ///
     ///     http://localhost:9998/external-dns
-    pub fn new(domain: &str) -> Self {
-        Client {
-            domain: domain.to_string(),
+    pub fn new<S: AsRef<str>>(domain: S) -> Result<Self, url::ParseError> {
+        Ok(Client {
+            domain: Url::parse(domain.as_ref())?,
             client: reqwest::Client::new(),
-        }
-    }
-
-    fn url(&self, path: &str) -> Url {
-        Url::from_str(&format!("{}/{path}", self.domain)).unwrap()
+        })
     }
 
     #[instrument(skip(self, body))]
@@ -88,7 +93,7 @@ impl Client {
     pub async fn healthz(&self) -> Result<String, Error> {
         Ok(self
             .client
-            .get(self.url("healthz"))
+            .get(self.domain.join("healthz")?)
             .send()
             .await?
             .text()
@@ -97,18 +102,27 @@ impl Client {
 
     /// Apply the given [`Changes`]
     pub async fn set_records(&self, changes: Vec<Change>) -> Result<(), Error> {
-        self.request(Method::POST, self.url("setRecords"), Changes::from(changes))
-            .await
+        self.request(
+            Method::POST,
+            self.domain.join("setRecords")?,
+            Changes::from(changes),
+        )
+        .await
     }
 
     /// Get all records.
     pub async fn get_records(&self) -> Result<Vec<Endpoint>, Error> {
-        self.request(Method::GET, self.url("getRecords"), ()).await
+        self.request(Method::GET, self.domain.join("getRecords")?, ())
+            .await
     }
 
     /// Adjust endpoints according to the given list of endpoints.
     pub async fn adjust_endpoints(&self, endpoints: Vec<Endpoint>) -> Result<Vec<Endpoint>, Error> {
-        self.request(Method::POST, self.url("adjustEndpoints"), endpoints)
-            .await
+        self.request(
+            Method::POST,
+            self.domain.join("adjustEndpoints")?,
+            endpoints,
+        )
+        .await
     }
 }

@@ -3,7 +3,7 @@ name = "external-dns-sdk"
 repository = "https://github.com/kubi-zone/external-dns-sdk"
 description = "Types and utilities for interacting with the External-DNS Webhook API both as server and client."
 keywords = ["external-dns", "webhook", "api"]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 
@@ -13,6 +13,7 @@ reqwest = { version = "0.12.5", features = [
     "rustls-tls",
     "json",
 ], default-features = false, optional = true }
+url = { version = "2.5.2", optional = true }
 
 axum = { version = "0.7.5", features = ["json"], optional = true }
 tokio = { version = "1.38.0", features = ["signal"], optional = true }
@@ -25,7 +26,7 @@ async-trait = "0.1.80"
 
 [features]
 default = ["client", "provider"]
-client = ["dep:reqwest"]
+client = ["dep:reqwest", "dep:url"]
 provider = ["dep:axum", "dep:tokio"]
 
 [dev-dependencies]

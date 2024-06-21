@@ -112,7 +112,7 @@ async fn main() {
         .await
     });
 
-    let client = Client::new("http://localhost:12333");
+    let client = Client::new("http://localhost:12333").unwrap();
 
     assert_eq!(client.healthz().await.unwrap(), "ok".to_string());
     assert_eq!(client.adjust_endpoints(vec![]).await.unwrap(), vec![]);
