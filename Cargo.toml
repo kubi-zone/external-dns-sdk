@@ -1,7 +1,10 @@
 [package]
 name = "external-dns-sdk"
+description = "Types and utilities for interacting with the External-DNS Webhook API both as server and client."
+keywords = ["external-dns", "webhook", "api"]
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 tracing = "0.1"
