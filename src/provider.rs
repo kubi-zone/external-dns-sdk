@@ -15,7 +15,8 @@ use reqwest::StatusCode;
 use tokio::net::TcpListener;
 use tracing::{info_span, warn};
 
-use crate::{Changes, DomainFilter, Endpoint};
+use crate::{Change, Changes, DomainFilter, Endpoint};
+
 #[async_trait]
 pub trait Provider {
     type Error: Display;
@@ -33,7 +34,7 @@ pub trait Provider {
     async fn get_records(&self) -> Result<Vec<Endpoint>, Self::Error>;
 
     /// Apply the given changes.
-    async fn set_records(&self, changes: Changes) -> Result<(), Self::Error>;
+    async fn set_records(&self, changes: Vec<Change>) -> Result<(), Self::Error>;
 
     /// Instruct the webhook to adjust the records according to the provided list of endpoints.
     async fn adjust_endpoints(
@@ -123,6 +124,8 @@ async fn set_records<P: Provider>(
     State(context): State<Context<P>>,
     Json(changes): Json<Changes>,
 ) -> Response {
+    let changes = Vec::<Change>::from(changes);
+
     match context.provider.set_records(changes).await {
         Ok(result) => (StatusCode::OK, Json(result)).into_response(),
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),

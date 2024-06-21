@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use reqwest::{header::CONTENT_TYPE, IntoUrl, Method, Url};
+use reqwest::{header::CONTENT_TYPE, Method, Url};
 use serde::{de::DeserializeOwned, Serialize};
-use tracing::error;
+use tracing::{error, instrument};
 
-use crate::{Changes, Endpoint};
+use crate::{Change, Changes, Endpoint};
 
 pub struct Client {
     /// Prefix of the API endpoints.
@@ -51,7 +51,8 @@ impl Client {
         Url::from_str(&format!("{}/{path}", self.domain)).unwrap()
     }
 
-    async fn request<I, O>(&self, method: Method, url: impl IntoUrl, body: I) -> Result<O, Error>
+    #[instrument(skip(self, body))]
+    async fn request<I, O>(&self, method: Method, url: Url, body: I) -> Result<O, Error>
     where
         I: Serialize,
         O: DeserializeOwned,
@@ -91,8 +92,8 @@ impl Client {
     }
 
     /// Apply the given [`Changes`]
-    pub async fn set_records(&self, changes: Changes) -> Result<(), Error> {
-        self.request(Method::POST, self.url("setRecords"), changes)
+    pub async fn set_records(&self, changes: Vec<Change>) -> Result<(), Error> {
+        self.request(Method::POST, self.url("setRecords"), Changes::from(changes))
             .await
     }
 

@@ -13,6 +13,7 @@ reqwest = { version = "0.12.5", features = [
 axum = { version = "0.7.5", features = ["json"], optional = true }
 tokio = { version = "1.38.0", features = ["signal"], optional = true }
 
+kubizone-common = { version = "0.13.2" }
 serde_json = { version = "1.0.117" }
 serde = { version = "1.0.203", features = ["derive"] }
 thiserror = "1.0.61"
@@ -23,6 +24,6 @@ default = ["client", "provider"]
 client = ["dep:reqwest"]
 provider = ["dep:axum", "dep:tokio"]
 
-
 [dev-dependencies]
+tracing-subscriber = "0.3.18"
 tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
