@@ -176,7 +176,7 @@ impl EndpointDiff for Vec<Endpoint> {
 
         let deletes = old_keys
             .difference(&new_keys)
-            .filter_map(|identity| old.get(&identity))
+            .filter_map(|identity| old.get(identity))
             .cloned()
             .map(Change::Delete);
 
@@ -191,11 +191,7 @@ impl EndpointDiff for Vec<Endpoint> {
             Some(Change::Update { old, new })
         });
 
-        deletes
-            .into_iter()
-            .chain(updates.into_iter())
-            .chain(creates.into_iter())
-            .collect()
+        deletes.into_iter().chain(updates).chain(creates).collect()
     }
 }
 
