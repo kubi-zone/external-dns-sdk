@@ -14,11 +14,11 @@ pub struct Client {
     ///
     /// If for example your healthz endpoint is at:
     ///
-    ///     http://localhost:9998/external-dns/healthz
+    /// > http://localhost:9998/external-dns/healthz
     ///
     /// Then your domain should be:
     ///
-    ///     http://localhost:9998/external-dns
+    /// > http://localhost:9998/external-dns
     domain: Url,
     client: reqwest::Client,
 }
@@ -48,11 +48,11 @@ impl Client {
     ///
     /// If for example your healthz endpoint is at:
     ///
-    ///     http://localhost:9998/external-dns/healthz
+    /// > http://localhost:9998/external-dns/healthz
     ///
     /// Then your domain should be:
     ///
-    ///     http://localhost:9998/external-dns
+    /// > http://localhost:9998/external-dns
     pub fn new<S: AsRef<str>>(domain: S) -> Result<Self, url::ParseError> {
         Ok(Client {
             domain: Url::parse(domain.as_ref())?,
