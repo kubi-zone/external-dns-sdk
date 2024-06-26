@@ -46,9 +46,11 @@ pub struct Endpoint {
 
     /// One or more labels associated with the record, if
     /// supported by the underlying provider.
+    #[serde(default)]
     pub labels: HashMap<String, String>,
 
     /// Provider-specific properties associated with the endpoint.
+    #[serde(default)]
     pub provider_specific: Vec<ProviderSpecificProperty>,
 }
 
