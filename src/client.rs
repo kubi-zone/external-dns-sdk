@@ -104,7 +104,7 @@ impl Client {
     pub async fn set_records(&self, changes: Vec<Change>) -> Result<(), Error> {
         self.request(
             Method::POST,
-            self.domain.join("setRecords")?,
+            self.domain.join("records")?,
             Changes::from(changes),
         )
         .await
@@ -112,7 +112,7 @@ impl Client {
 
     /// Get all records.
     pub async fn get_records(&self) -> Result<Vec<Endpoint>, Error> {
-        self.request(Method::GET, self.domain.join("getRecords")?, ())
+        self.request(Method::GET, self.domain.join("records")?, ())
             .await
     }
 
@@ -120,7 +120,7 @@ impl Client {
     pub async fn adjust_endpoints(&self, endpoints: Vec<Endpoint>) -> Result<Vec<Endpoint>, Error> {
         self.request(
             Method::POST,
-            self.domain.join("adjustEndpoints")?,
+            self.domain.join("adjustendpoints")?,
             endpoints,
         )
         .await

@@ -65,9 +65,8 @@ pub async fn serve<P: Provider + Send + Sync + 'static>(addr: SocketAddr, provid
     info_span!("external-dns-sdk");
     let app = Router::new()
         .route("/healthz", get(healthz::<P>))
-        .route("/getRecords", get(get_records::<P>))
-        .route("/setRecords", post(set_records::<P>))
-        .route("/adjustEndpoints", post(adjust_endpoints::<P>))
+        .route("/records", get(get_records::<P>).post(set_records::<P>))
+        .route("/adjustendpoints", post(adjust_endpoints::<P>))
         .with_state(Context {
             provider: Arc::new(provider),
         });
