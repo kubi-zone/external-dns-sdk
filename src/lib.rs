@@ -41,6 +41,7 @@ pub struct Endpoint {
     pub targets: Vec<String>,
 
     /// Time-To-Live.
+    #[serde(rename = "recordTTL")]
     pub record_ttl: i64,
 
     /// One or more labels associated with the record, if
