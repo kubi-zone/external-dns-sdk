@@ -42,9 +42,7 @@ pub trait Provider {
     async fn adjust_endpoints(
         &self,
         endpoints: Vec<Endpoint>,
-    ) -> Result<Vec<Endpoint>, Self::Error> {
-        Ok(endpoints)
-    }
+    ) -> Result<Vec<Endpoint>, Self::Error>;
 }
 
 struct Context<P: Provider>
