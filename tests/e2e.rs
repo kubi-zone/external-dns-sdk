@@ -121,87 +121,88 @@ async fn main() {
     let initial_state = vec![
         Endpoint {
             identity: EndpointIdent {
-                dns_name: DomainName::try_from("update.org.").unwrap(),
+                dns_name: DomainName::try_from("update.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.1".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
         Endpoint {
             identity: EndpointIdent {
-                dns_name: DomainName::try_from("delete.org.").unwrap(),
+                dns_name: DomainName::try_from("delete.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.1".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
     ];
 
-    assert_eq!(
-        client
-            .adjust_endpoints(initial_state.clone())
-            .await
-            .unwrap(),
-        initial_state
-    );
+    client
+        .set_records(vec![].difference(initial_state.clone()))
+        .await
+        .unwrap();
+
+    assert_eq!(client.get_records().await.unwrap(), initial_state);
 
     let new_state = vec![
         Endpoint {
             identity: EndpointIdent {
-                dns_name: DomainName::try_from("update.org.").unwrap(),
+                dns_name: DomainName::try_from("update.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.2".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
         Endpoint {
             identity: EndpointIdent {
-                dns_name: DomainName::try_from("create.org.").unwrap(),
+                dns_name: DomainName::try_from("create.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.1".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
     ];
 
-    assert_eq!(
-        client.adjust_endpoints(new_state.clone()).await.unwrap(),
-        new_state
-    );
+    client
+        .set_records(initial_state.difference(new_state.clone()))
+        .await
+        .unwrap();
+
+    assert_eq!(client.get_records().await.unwrap(), new_state);
 
     client
         .set_records(vec![
             Change::Delete(Endpoint {
                 identity: EndpointIdent {
-                    dns_name: DomainName::try_from("update.org.").unwrap(),
+                    dns_name: DomainName::try_from("update.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: String::new(),
+                    set_identifier: None,
                 },
                 targets: vec!["192.168.0.2".to_string()],
-                record_ttl: 300,
+                record_ttl: Some(300),
                 labels: HashMap::default(),
                 provider_specific: Vec::new(),
             }),
             Change::Create(Endpoint {
                 identity: EndpointIdent {
-                    dns_name: DomainName::try_from("new.org.").unwrap(),
+                    dns_name: DomainName::try_from("new.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: String::new(),
+                    set_identifier: None,
                 },
                 targets: vec!["192.168.0.3".to_string()],
-                record_ttl: 300,
+                record_ttl: Some(300),
                 labels: HashMap::default(),
                 provider_specific: Vec::new(),
             }),
@@ -214,23 +215,23 @@ async fn main() {
         vec![
             Endpoint {
                 identity: EndpointIdent {
-                    dns_name: DomainName::try_from("create.org.").unwrap(),
+                    dns_name: DomainName::try_from("create.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: String::new(),
+                    set_identifier: None,
                 },
                 targets: vec!["192.168.0.1".to_string()],
-                record_ttl: 300,
+                record_ttl: Some(300),
                 labels: HashMap::default(),
                 provider_specific: Vec::new(),
             },
             Endpoint {
                 identity: EndpointIdent {
-                    dns_name: DomainName::try_from("new.org.").unwrap(),
+                    dns_name: DomainName::try_from("new.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: String::new(),
+                    set_identifier: None,
                 },
                 targets: vec!["192.168.0.3".to_string()],
-                record_ttl: 300,
+                record_ttl: Some(300),
                 labels: HashMap::default(),
                 provider_specific: Vec::new(),
             }

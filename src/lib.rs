@@ -10,12 +10,13 @@ use kubizone_common::{DomainName, Type};
 #[cfg(feature = "provider")]
 pub use provider::{serve, Provider};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 struct DomainFilter {
+    #[serde(default)]
     pub filters: Vec<String>,
 }
 
@@ -23,9 +24,20 @@ struct DomainFilter {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct EndpointIdent {
+    #[serde(serialize_with = "remove_trailing_dots")]
     pub dns_name: DomainName,
     pub record_type: Type,
-    pub set_identifier: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub set_identifier: Option<String>,
+}
+
+fn remove_trailing_dots<S>(domain_name: &DomainName, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let name = domain_name.to_string();
+    let trimmed = name.trim_end_matches('.');
+    serializer.serialize_str(trimmed)
 }
 
 /// Domain and record type with one or more "targets" (values).
@@ -41,16 +53,16 @@ pub struct Endpoint {
     pub targets: Vec<String>,
 
     /// Time-To-Live.
-    #[serde(rename = "recordTTL")]
-    pub record_ttl: i64,
+    #[serde(default, rename = "recordTTL", skip_serializing_if = "Option::is_none")]
+    pub record_ttl: Option<i64>,
 
     /// One or more labels associated with the record, if
     /// supported by the underlying provider.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub labels: HashMap<String, String>,
 
     /// Provider-specific properties associated with the endpoint.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub provider_specific: Vec<ProviderSpecificProperty>,
 }
 
@@ -206,10 +218,10 @@ fn difference_calculation() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("update.org.").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.1".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
@@ -217,10 +229,10 @@ fn difference_calculation() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("delete.org.").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.1".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
@@ -231,10 +243,10 @@ fn difference_calculation() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("update.org.").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.2".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
@@ -242,10 +254,10 @@ fn difference_calculation() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("create.org.").unwrap(),
                 record_type: Type::A,
-                set_identifier: String::new(),
+                set_identifier: None,
             },
             targets: vec!["192.168.0.1".to_string()],
-            record_ttl: 300,
+            record_ttl: Some(300),
             labels: HashMap::default(),
             provider_specific: Vec::new(),
         },
@@ -260,10 +272,10 @@ fn difference_calculation() {
                 identity: EndpointIdent {
                     dns_name: DomainName::try_from("delete.org.").unwrap(),
                     record_type: Type::A,
-                    set_identifier: String::new(),
+                    set_identifier: None,
                 },
                 targets: vec!["192.168.0.1".to_string()],
-                record_ttl: 300,
+                record_ttl: Some(300),
                 labels: HashMap::default(),
                 provider_specific: Vec::new(),
             }),
@@ -272,10 +284,10 @@ fn difference_calculation() {
                     identity: EndpointIdent {
                         dns_name: DomainName::try_from("update.org.").unwrap(),
                         record_type: Type::A,
-                        set_identifier: String::new(),
+                        set_identifier: None,
                     },
                     targets: vec!["192.168.0.1".to_string()],
-                    record_ttl: 300,
+                    record_ttl: Some(300),
                     labels: HashMap::default(),
                     provider_specific: Vec::new(),
                 },
@@ -283,10 +295,10 @@ fn difference_calculation() {
                     identity: EndpointIdent {
                         dns_name: DomainName::try_from("update.org.").unwrap(),
                         record_type: Type::A,
-                        set_identifier: String::new(),
+                        set_identifier: None,
                     },
                     targets: vec!["192.168.0.2".to_string()],
-                    record_ttl: 300,
+                    record_ttl: Some(300),
                     labels: HashMap::default(),
                     provider_specific: Vec::new(),
                 }
@@ -295,10 +307,10 @@ fn difference_calculation() {
                 identity: EndpointIdent {
                     dns_name: DomainName::try_from("create.org.").unwrap(),
                     record_type: Type::A,
-                    set_identifier: String::new(),
+                    set_identifier: None,
                 },
                 targets: vec!["192.168.0.1".to_string()],
-                record_ttl: 300,
+                record_ttl: Some(300),
                 labels: HashMap::default(),
                 provider_specific: Vec::new(),
             })

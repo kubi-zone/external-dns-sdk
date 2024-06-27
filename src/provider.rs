@@ -38,11 +38,13 @@ pub trait Provider {
     /// Apply the given changes.
     async fn set_records(&self, changes: Vec<Change>) -> Result<(), Self::Error>;
 
-    /// Instruct the webhook to adjust the records according to the provided list of endpoints.
+    /// Annotate the given endpoints with provider-specific tags
     async fn adjust_endpoints(
         &self,
         endpoints: Vec<Endpoint>,
-    ) -> Result<Vec<Endpoint>, Self::Error>;
+    ) -> Result<Vec<Endpoint>, Self::Error> {
+        Ok(endpoints)
+    }
 }
 
 struct Context<P: Provider>

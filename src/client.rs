@@ -1,8 +1,8 @@
 use reqwest::{header::CONTENT_TYPE, Method};
 use serde::{de::DeserializeOwned, Serialize};
-use tracing::{error, instrument};
+use tracing::{error, instrument, trace};
 
-use crate::{Change, Changes, Endpoint};
+use crate::{Change, Changes, DomainFilter, Endpoint};
 
 pub use url::Url;
 
@@ -60,7 +60,6 @@ impl Client {
         })
     }
 
-    #[instrument(skip(self, body))]
     async fn request<I, O>(&self, method: Method, url: Url, body: I) -> Result<O, Error>
     where
         I: Serialize,
@@ -72,13 +71,17 @@ impl Client {
 
         // Providing () as the body will yield 'null' after serialization.
         if serialized_body != "null" {
+            trace!("serialized json: {serialized_body}");
             request = request.body(serialized_body).header(
                 CONTENT_TYPE,
                 "application/external.dns.webhook+json;version=1",
             );
         }
 
-        let result = request.send().await?.text().await?;
+        let response = request.send().await?;
+        trace!("response: {:?}", response);
+
+        let result = response.text().await?;
 
         match serde_json::from_str::<O>(&result) {
             Ok(result) => Ok(result),
@@ -89,7 +92,21 @@ impl Client {
         }
     }
 
+    /// Initialize the webhook service and fetch the domain filter.
+    #[instrument(skip(self))]
+    pub async fn init(&self) -> Result<Vec<String>, Error> {
+        Ok(self
+            .client
+            .get(self.domain.clone())
+            .send()
+            .await?
+            .json::<DomainFilter>()
+            .await?
+            .filters)
+    }
+
     /// Check health of the webhook service
+    #[instrument(skip(self))]
     pub async fn healthz(&self) -> Result<String, Error> {
         Ok(self
             .client
@@ -101,6 +118,7 @@ impl Client {
     }
 
     /// Apply the given [`Changes`]
+    #[instrument(skip(self))]
     pub async fn set_records(&self, changes: Vec<Change>) -> Result<(), Error> {
         self.request(
             Method::POST,
@@ -111,12 +129,14 @@ impl Client {
     }
 
     /// Get all records.
+    #[instrument(skip(self))]
     pub async fn get_records(&self) -> Result<Vec<Endpoint>, Error> {
         self.request(Method::GET, self.domain.join("records")?, ())
             .await
     }
 
     /// Adjust endpoints according to the given list of endpoints.
+    #[instrument(skip(self))]
     pub async fn adjust_endpoints(&self, endpoints: Vec<Endpoint>) -> Result<Vec<Endpoint>, Error> {
         self.request(
             Method::POST,
