@@ -181,8 +181,6 @@ impl EndpointDiff for Vec<Endpoint> {
         let old_keys: HashSet<_> = old.keys().collect();
         let new_keys: HashSet<_> = new.keys().collect();
 
-        println!("{old_keys:#?}\n{new_keys:#?}");
-
         let creates = new_keys
             .difference(&old_keys)
             .filter_map(|identity| new.get(identity))
