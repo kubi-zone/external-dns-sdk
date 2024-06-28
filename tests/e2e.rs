@@ -123,8 +123,8 @@ async fn main() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("update.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: None,
             },
+            set_identifier: None,
             targets: vec!["192.168.0.1".to_string()],
             record_ttl: Some(300),
             labels: HashMap::default(),
@@ -134,8 +134,8 @@ async fn main() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("delete.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: None,
             },
+            set_identifier: None,
             targets: vec!["192.168.0.1".to_string()],
             record_ttl: Some(300),
             labels: HashMap::default(),
@@ -155,8 +155,8 @@ async fn main() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("update.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: None,
             },
+            set_identifier: None,
             targets: vec!["192.168.0.2".to_string()],
             record_ttl: Some(300),
             labels: HashMap::default(),
@@ -166,8 +166,8 @@ async fn main() {
             identity: EndpointIdent {
                 dns_name: DomainName::try_from("create.org").unwrap(),
                 record_type: Type::A,
-                set_identifier: None,
             },
+            set_identifier: None,
             targets: vec!["192.168.0.1".to_string()],
             record_ttl: Some(300),
             labels: HashMap::default(),
@@ -188,8 +188,8 @@ async fn main() {
                 identity: EndpointIdent {
                     dns_name: DomainName::try_from("update.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: None,
                 },
+                set_identifier: None,
                 targets: vec!["192.168.0.2".to_string()],
                 record_ttl: Some(300),
                 labels: HashMap::default(),
@@ -199,8 +199,8 @@ async fn main() {
                 identity: EndpointIdent {
                     dns_name: DomainName::try_from("new.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: None,
                 },
+                set_identifier: None,
                 targets: vec!["192.168.0.3".to_string()],
                 record_ttl: Some(300),
                 labels: HashMap::default(),
@@ -217,8 +217,8 @@ async fn main() {
                 identity: EndpointIdent {
                     dns_name: DomainName::try_from("create.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: None,
                 },
+                set_identifier: None,
                 targets: vec!["192.168.0.1".to_string()],
                 record_ttl: Some(300),
                 labels: HashMap::default(),
@@ -228,8 +228,8 @@ async fn main() {
                 identity: EndpointIdent {
                     dns_name: DomainName::try_from("new.org").unwrap(),
                     record_type: Type::A,
-                    set_identifier: None,
                 },
+                set_identifier: None,
                 targets: vec!["192.168.0.3".to_string()],
                 record_ttl: Some(300),
                 labels: HashMap::default(),

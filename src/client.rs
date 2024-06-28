@@ -1,5 +1,10 @@
-use reqwest::{header::CONTENT_TYPE, Method};
-use serde::{de::DeserializeOwned, Serialize};
+use std::{fmt::Debug, string::FromUtf8Error};
+
+use reqwest::{
+    header::{ACCEPT, CONTENT_TYPE},
+    Method, Response, StatusCode,
+};
+use serde::de::DeserializeOwned;
 use tracing::{error, instrument, trace};
 
 use crate::{Change, Changes, DomainFilter, Endpoint};
@@ -41,6 +46,14 @@ pub enum Error {
     /// Failed while parsing Url.
     #[error("url: {0}")]
     Url(#[from] url::ParseError),
+
+    /// Webhook Failure
+    #[error("webhook: status code {0}: {1}")]
+    Webhook(StatusCode, String),
+
+    /// Response payload is not valid utf8
+    #[error("invalid utf8 payload: {0}")]
+    InvalidUtf8(#[from] FromUtf8Error),
 }
 
 impl Client {
@@ -58,38 +71,6 @@ impl Client {
             domain: Url::parse(domain.as_ref())?,
             client: reqwest::Client::new(),
         })
-    }
-
-    async fn request<I, O>(&self, method: Method, url: Url, body: I) -> Result<O, Error>
-    where
-        I: Serialize,
-        O: DeserializeOwned,
-    {
-        let serialized_body = serde_json::to_string(&body).map_err(Error::Serialization)?;
-
-        let mut request = self.client.request(method, url);
-
-        // Providing () as the body will yield 'null' after serialization.
-        if serialized_body != "null" {
-            trace!("serialized json: {serialized_body}");
-            request = request.body(serialized_body).header(
-                CONTENT_TYPE,
-                "application/external.dns.webhook+json;version=1",
-            );
-        }
-
-        let response = request.send().await?;
-        trace!("response: {:?}", response);
-
-        let result = response.text().await?;
-
-        match serde_json::from_str::<O>(&result) {
-            Ok(result) => Ok(result),
-            Err(err) => {
-                error!("failed to deserialize api result: {err}, {result}");
-                Err(Error::Deserialization(err))
-            }
-        }
     }
 
     /// Initialize the webhook service and fetch the domain filter.
@@ -110,7 +91,7 @@ impl Client {
     pub async fn healthz(&self) -> Result<String, Error> {
         Ok(self
             .client
-            .get(self.domain.join("healthz")?)
+            .request(Method::GET, self.domain.join("healthz")?)
             .send()
             .await?
             .text()
@@ -120,29 +101,92 @@ impl Client {
     /// Apply the given [`Changes`]
     #[instrument(skip(self))]
     pub async fn set_records(&self, changes: Vec<Change>) -> Result<(), Error> {
-        self.request(
-            Method::POST,
-            self.domain.join("records")?,
-            Changes::from(changes),
-        )
-        .await
+        let serialized_body =
+            serde_json::to_string(&Changes::from(changes)).map_err(Error::Serialization)?;
+
+        let response = self
+            .client
+            .request(Method::POST, self.domain.join("records")?)
+            .body(serialized_body)
+            .header(
+                CONTENT_TYPE,
+                "application/external.dns.webhook+json;version=1",
+            )
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            return Ok(());
+        }
+
+        Err(Error::Webhook(
+            response.status(),
+            String::from_utf8_lossy(&response.bytes().await?).into_owned(),
+        ))
+    }
+
+    async fn parse_response<T: DeserializeOwned + Debug>(response: Response) -> Result<T, Error> {
+        let status = response.status();
+
+        trace!("webhook returned status code: {status}");
+
+        let payload = response
+            .bytes()
+            .await
+            .map_err(|err| {
+                error!("failed to extract response payload: {err}");
+                err
+            })?
+            .to_vec();
+
+        let payload = String::from_utf8(payload).map_err(|err| {
+            error!("failed to parse payload as valid utf8: {err}");
+            err
+        })?;
+
+        if status.is_success() {
+            let payload = serde_json::from_str::<T>(&payload).map_err(|err| {
+                error!("failed to parse json payload: {err} ({payload})");
+                Error::Deserialization(err)
+            })?;
+
+            trace!("api returned response: {payload:?}");
+            Ok(payload)
+        } else {
+            Err(Error::Webhook(status, payload))
+        }
     }
 
     /// Get all records.
     #[instrument(skip(self))]
     pub async fn get_records(&self) -> Result<Vec<Endpoint>, Error> {
-        self.request(Method::GET, self.domain.join("records")?, ())
-            .await
+        let response = self
+            .client
+            .request(Method::GET, self.domain.join("records")?)
+            .header(ACCEPT, "application/external.dns.webhook+json;version=1")
+            .send()
+            .await?;
+
+        Self::parse_response(response).await
     }
 
     /// Adjust endpoints according to the given list of endpoints.
     #[instrument(skip(self))]
     pub async fn adjust_endpoints(&self, endpoints: Vec<Endpoint>) -> Result<Vec<Endpoint>, Error> {
-        self.request(
-            Method::POST,
-            self.domain.join("adjustendpoints")?,
-            endpoints,
-        )
-        .await
+        let serialized_body = serde_json::to_string(&endpoints).map_err(Error::Serialization)?;
+
+        let response = self
+            .client
+            .request(Method::POST, self.domain.join("adjustendpoints")?)
+            .body(serialized_body)
+            .header(
+                CONTENT_TYPE,
+                "application/external.dns.webhook+json;version=1",
+            )
+            .header(ACCEPT, "application/external.dns.webhook+json;version=1")
+            .send()
+            .await?;
+
+        Self::parse_response(response).await
     }
 }
