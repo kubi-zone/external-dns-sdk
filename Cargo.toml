@@ -3,7 +3,7 @@ name = "external-dns-sdk"
 repository = "https://github.com/kubi-zone/external-dns-sdk"
 description = "Types and utilities for interacting with the External-DNS Webhook API both as server and client."
 keywords = ["external-dns", "webhook", "api"]
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 license = "MIT"
 
@@ -18,7 +18,7 @@ url = { version = "2.5.2", optional = true }
 axum = { version = "0.7.5", features = ["json"], optional = true }
 tokio = { version = "1.38.0", features = ["signal"], optional = true }
 
-kubizone-common = { version = "0.14.3" }
+kubizone-common = { version = "0.14.5" }
 serde_json = { version = "1.0.117" }
 serde = { version = "1.0.203", features = ["derive"] }
 thiserror = "1.0.61"
